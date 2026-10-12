@@ -1,0 +1,276 @@
+/*
+ * Slider blocks — frontend styles.
+ * Pairs with splide-core.min.css (loaded first).
+ *
+ * Scoped to .is-slider rather than a block class, so a Group slider and a
+ * Query Loop slider share one set of arrow and dot styles.
+ *
+ * Control colours come from the theme's --hd-* section role tokens, with
+ * currentColor fallbacks so the plugin still works on a theme that does not
+ * define them. See the token block below.
+ *
+ * splide-core.min.css ships NO arrow/dot styling, so everything you see below
+ * is bespoke. Splide's JS injects the arrow/pagination HTML into the slider
+ * root as siblings of .splide__track — they're always there when arrows/dots
+ * are enabled; this file just makes them visible.
+ */
+
+.is-slider {
+	padding-right: 0;
+	position: relative;
+
+	/*
+	 * Controls take the section's own role tokens rather than the inherited
+	 * text colour, which is wrong inside a coloured section: a themed section
+	 * restates the whole role set on itself, so arrows and dots recolour with
+	 * it without a selector per section.
+	 *
+	 * The fallbacks are what makes this plugin portable — on a theme that
+	 * defines no role tokens the controls fall back to currentColor, which is
+	 * how they behaved before.
+	 */
+	--hd-slider-control:        var(--hd-outline, currentColor);
+	--hd-slider-control-active: var(--hd-link, currentColor);
+	--hd-slider-control-muted:  var(--hd-control-border, currentColor);
+
+	/*
+	 * Arrow button size, and how far outside the block the "left and right"
+	 * placement sits: the button plus the breathing room between it and the
+	 * block's edge.
+	 */
+	--hd-slider-arrow-size:   2.5rem;
+	--hd-slider-arrow-gutter: calc(var(--hd-slider-arrow-size) + 2rem);
+}
+
+/*
+ * The track lets slides bleed off its edge (see below), so the wrapping block
+ * has to do the clipping. Full-width sliders clip at the viewport; any group
+ * that directly wraps a slider clips at its own padding box, so slides never
+ * run out past its background.
+ */
+.alignfull:has(.splide),
+.wp-block-group:has( > .is-slider ) {
+	overflow: clip;
+}
+
+/* Let slides overflow the track so they bleed off the right edge. */
+.is-slider .splide__track {
+	overflow: visible;
+}
+
+.is-slider .splide__slide {
+	height: auto;
+}
+
+/*
+ * Slides outside the current set are dimmed, so the partial slide bleeding off
+ * the right edge reads as "more to come" rather than as part of the set.
+ *
+ * is-in-view is ours, set by assets/js/hd-slider-blocks-frontend.js, and marks
+ * the slides sitting wholly inside the track. Splide's own is-visible means
+ * the same thing but is only updated once a move has finished, which would
+ * leave the fade trailing the slide by a whole transition. Scoped to
+ * .is-slider-initialised so nothing is dimmed before the script has run, or at
+ * all if it never does.
+ */
+.is-slider-initialised .splide__slide {
+	opacity: var(--hd-slider-slide-inactive-opacity, 0.25);
+	transition: opacity 0.4s ease;
+}
+
+.is-slider-initialised .splide__slide.is-in-view {
+	opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.is-slider-initialised .splide__slide {
+		transition: none;
+	}
+}
+
+/*
+ * Query Loop only. The post list keeps the layout classes core gave it, and
+ * its wp-container-* rule outranks splide-core's .splide__list, so the track
+ * is restated here. Margins come off for the same reason.
+ */
+.is-slider .splide__list.wp-block-post-template {
+	display: flex;
+	flex-wrap: nowrap;
+	grid-template-columns: none;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/*
+ * Pagination needs every post in the DOM at once, which a slider cannot give
+ * it. The editor sidebar says so; this makes sure a leftover block from before
+ * the slider was switched on does not render.
+ */
+.is-slider .wp-block-query-pagination,
+.is-slider .wp-block-query-no-results {
+	display: none;
+}
+
+/* ── Arrows ──────────────────────────────────────── */
+
+/*
+ * Always out of flow. Where the pair actually lands comes from the
+ * is-slider-arrows-* class the block carries, one per placement offered in the
+ * editor; PHP adds it on render, so a block saved before the option existed
+ * still gets the default.
+ */
+.is-slider .splide__arrows {
+	position: absolute;
+	display: flex;
+	gap: 0.5rem;
+}
+
+/*
+ * Default placement: one arrow either side of the slider, vertically centred.
+ *
+ * The arrows hang outside the block rather than eating into it, so the first
+ * slide still starts on the block's own edge and the slides go on lining up
+ * with whatever the section is constrained to (alignwide and so on). The
+ * gutter is a negative inset, which needs room in the page margin beside the
+ * block — see the clipping note below.
+ *
+ * The container spans the full width so the two arrows can be pushed to
+ * opposite ends, which leaves it lying across the slides in between — hence
+ * pointer-events off on the container and back on for the buttons themselves.
+ * Slides come later in the DOM and are positioned, so the arrows need lifting
+ * out of their way to stay clickable.
+ */
+.is-slider-arrows-sides .splide__arrows {
+	inset-inline: calc(-1 * var(--hd-slider-arrow-gutter));
+	inset-block: 0;
+	align-items: center;
+	justify-content: space-between;
+	pointer-events: none;
+	z-index: 1;
+}
+
+.is-slider-arrows-sides .splide__arrow {
+	pointer-events: auto;
+}
+
+/*
+ * The wrapping group clips the slide bleed at its own edge, which would take
+ * these arrows with it, so it stands down for this placement. The bleed is
+ * then clipped further out, by the full-width section rule above or by the
+ * page itself.
+ */
+.wp-block-group:has( > .is-slider-arrows-sides ) {
+	overflow: visible;
+}
+
+/*
+ * Dots sit below the track inside the same root, so centring on the root would
+ * push the arrows down past the middle of the slides. Discount the pagination
+ * row (0.5rem tall, 1rem margin) when it is there.
+ */
+.is-slider-arrows-sides:has(.splide__pagination) .splide__arrows {
+	inset-block-end: 1.5rem;
+}
+
+/* Corner placements clear the track entirely, above or below it. */
+.is-slider-arrows-top-left .splide__arrows,
+.is-slider-arrows-top-right .splide__arrows {
+	inset-block-end: calc(100% + 1.5rem);
+}
+
+.is-slider-arrows-bottom-left .splide__arrows,
+.is-slider-arrows-bottom-right .splide__arrows {
+	inset-block-start: calc(100% + 1.5rem);
+}
+
+.is-slider-arrows-top-left .splide__arrows,
+.is-slider-arrows-bottom-left .splide__arrows {
+	inset-inline-start: 0;
+}
+
+.is-slider-arrows-top-right .splide__arrows,
+.is-slider-arrows-bottom-right .splide__arrows {
+	inset-inline-end: 0;
+}
+
+.is-slider .splide__arrow {
+	appearance: none;
+	background: transparent;
+	border: 1px solid var(--hd-slider-control);
+	color: var(--hd-slider-control);
+	font: inherit;
+	padding: 0;
+	cursor: pointer;
+	inline-size: var(--hd-slider-arrow-size);
+	block-size: var(--hd-slider-arrow-size);
+	border-radius: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: opacity 0.15s ease, box-shadow 0.2s ease;
+}
+
+/*
+ * Hover doubles the border weight rather than shifting colour, matching the
+ * theme's outline button, so the contrast a section guarantees holds in
+ * every state.
+ */
+.is-slider .splide__arrow:not([disabled]):hover,
+.is-slider .splide__arrow:not([disabled]):focus-visible {
+	box-shadow: inset 0 0 0 1px var(--hd-slider-control);
+}
+
+.is-slider .splide__arrow[disabled] {
+	opacity: 0.35;
+	cursor: default;
+}
+
+.is-slider .splide__arrow svg {
+	inline-size: 1rem;
+	block-size: 1rem;
+	fill: currentColor;
+}
+
+/* Splide ships a single right-pointing glyph for both arrows; flip prev. */
+.is-slider .splide__arrow--prev svg {
+	transform: rotate(180deg);
+}
+
+/* ── Pagination (dots) ───────────────────────────── */
+
+.is-slider .splide__pagination {
+	display: flex;
+	gap: 0.5rem;
+	justify-content: center;
+	align-items: center;
+	margin: 1rem 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.is-slider .splide__pagination li {
+	display: inline-flex;
+	margin: 0;
+}
+
+.is-slider .splide__pagination__page {
+	appearance: none;
+	background: var(--hd-slider-control-muted);
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+	inline-size: 0.5rem;
+	block-size: 0.5rem;
+	border-radius: 50%;
+	opacity: 0.35;
+	transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+/* The current slide is the one interactive state worth the accent colour. */
+.is-slider .splide__pagination__page.is-active,
+.is-slider .splide__pagination__page:hover,
+.is-slider .splide__pagination__page:focus-visible {
+	background: var(--hd-slider-control-active);
+	opacity: 1;
+}

@@ -1,0 +1,100 @@
+/*
+ * Editor preview for slider blocks.
+ *
+ * Splide isn't running in the editor — instead we show the slides as a plain
+ * horizontal overflow-scroll row so users can see the slide layout and still
+ * use the native block appender at the end of the row to add more slides.
+ *
+ * Four CSS vars are set on the wrapper by assets/js/hd-slider-blocks-editor.js:
+ *   --hd-slider-slides-to-show-desktop
+ *   --hd-slider-slides-to-show-tablet   (already resolved to desktop if "inherit")
+ *   --hd-slider-slides-to-show-mobile
+ *   --hd-slider-slide-gap
+ *
+ * The track differs by block: a Group's slides are its inner blocks, so the
+ * track is the editor's own block-list layout element, whereas a Query Loop's
+ * slides are posts rendered inside ul.wp-block-post-template. Both are listed
+ * against every rule below.
+ *
+ * Media queries match the iframe width inside the editor, so WP's device-preview
+ * toggle (desktop / tablet / mobile) will change which value is active.
+ */
+
+.is-slider-editor-preview > .block-editor-inner-blocks > .block-editor-block-list__layout,
+.is-slider-editor-preview.wp-block-group > .block-editor-block-list__layout,
+.is-slider-editor-preview ul.wp-block-post-template {
+	display: flex !important;
+	flex-direction: row !important;
+	flex-wrap: nowrap !important;
+	gap: var( --hd-slider-slide-gap, 1rem ) !important;
+	overflow-x: auto !important;
+	overflow-y: visible !important;
+	padding-block-end: 0.5rem;
+}
+
+/* Desktop (default): use --hd-slider-slides-to-show-desktop */
+.is-slider-editor-preview > .block-editor-inner-blocks > .block-editor-block-list__layout > *,
+.is-slider-editor-preview.wp-block-group > .block-editor-block-list__layout > *,
+.is-slider-editor-preview ul.wp-block-post-template > li {
+	flex: 0 0 calc(
+		( 100% - var( --hd-slider-slide-gap, 1rem ) * ( var( --hd-slider-slides-to-show-desktop, 3 ) - 1 ) )
+		/ var( --hd-slider-slides-to-show-desktop, 3 )
+	) !important;
+	max-width: calc(
+		( 100% - var( --hd-slider-slide-gap, 1rem ) * ( var( --hd-slider-slides-to-show-desktop, 3 ) - 1 ) )
+		/ var( --hd-slider-slides-to-show-desktop, 3 )
+	) !important;
+	margin-block: 0 !important;
+}
+
+/* Tablet */
+@media (max-width: 1023px) {
+	.is-slider-editor-preview > .block-editor-inner-blocks > .block-editor-block-list__layout > *,
+	.is-slider-editor-preview.wp-block-group > .block-editor-block-list__layout > *,
+	.is-slider-editor-preview ul.wp-block-post-template > li {
+		flex: 0 0 calc(
+			( 100% - var( --hd-slider-slide-gap, 1rem ) * ( var( --hd-slider-slides-to-show-tablet, 3 ) - 1 ) )
+			/ var( --hd-slider-slides-to-show-tablet, 3 )
+		) !important;
+		max-width: calc(
+			( 100% - var( --hd-slider-slide-gap, 1rem ) * ( var( --hd-slider-slides-to-show-tablet, 3 ) - 1 ) )
+			/ var( --hd-slider-slides-to-show-tablet, 3 )
+		) !important;
+	}
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+	.is-slider-editor-preview > .block-editor-inner-blocks > .block-editor-block-list__layout > *,
+	.is-slider-editor-preview.wp-block-group > .block-editor-block-list__layout > *,
+	.is-slider-editor-preview ul.wp-block-post-template > li {
+		flex: 0 0 calc(
+			( 100% - var( --hd-slider-slide-gap, 1rem ) * ( var( --hd-slider-slides-to-show-mobile, 1 ) - 1 ) )
+			/ var( --hd-slider-slides-to-show-mobile, 1 )
+		) !important;
+		max-width: calc(
+			( 100% - var( --hd-slider-slide-gap, 1rem ) * ( var( --hd-slider-slides-to-show-mobile, 1 ) - 1 ) )
+			/ var( --hd-slider-slides-to-show-mobile, 1 )
+		) !important;
+	}
+}
+
+/* Pagination can't work in a slider, so don't preview it as if it will. */
+.is-slider-editor-preview .wp-block-query-pagination {
+	opacity: 0.4;
+}
+
+/* Hint badge so authors know the slider is active. */
+.is-slider-editor-preview::before {
+	content: "Slider";
+	display: inline-block;
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	padding: 0.15rem 0.5rem;
+	margin-block-end: 0.5rem;
+	background: #1e1e1e;
+	color: #fff;
+	border-radius: 2px;
+}
