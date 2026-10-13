@@ -2,13 +2,14 @@
 /**
  * Plugin Name:       HD Slider Blocks
  * Description:       Turns a Group or a Query Loop into a horizontal slider, powered by Splide. Arrows, arrow placement, dots, and per-breakpoint slides-to-show are set per block in the editor.
- * Version:           1.3.0
+ * Version:           1.3.1
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            Highrise Digital
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       hd-slider-blocks
+ * Update URI:        https://github.com/highrisedigital/hd-slider-blocks
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -359,3 +360,104 @@ add_filter( 'render_block_core/query', function ( string $block_content, array $
 
 	return $processor->get_updated_html();
 }, 10, 2 );
+
+/**
+ * The GitHub repository this plugin is released from, as "owner/repo".
+ *
+ * Must match the "Update URI" line in the plugin header.
+ */
+const HD_SLIDER_BLOCKS_GITHUB_REPO = 'highrisedigital/hd-slider-blocks';
+
+/**
+ * Tell WordPress about new versions published as GitHub releases.
+ *
+ * The "Update URI" line in the plugin header tells WordPress not to look for
+ * this plugin on WordPress.org. Instead, when WordPress checks for plugin
+ * updates, it runs the update_plugins_{hostname} filter for the header's
+ * hostname (github.com here) and uses whatever the filter returns.
+ *
+ * Each release needs a zip named hd-slider-blocks.zip attached to it, holding
+ * the plugin in a hd-slider-blocks folder. GitHub's own "Source code" zips
+ * can't be used: they unpack to a folder named after the repository and
+ * commit, which WordPress would install as a different plugin. The release
+ * workflow in .github/workflows builds the right zip on each tag.
+ *
+ * @param array|false $update      The update data so far (false by default).
+ * @param array       $plugin_data The plugin's header data.
+ * @param string      $plugin_file The plugin's path, relative to the plugins folder.
+ * @return array|false The update data, or $update if there's nothing to add.
+ */
+function hd_slider_blocks_check_for_update( $update, array $plugin_data, string $plugin_file ) {
+	// The filter runs for every plugin with a github.com Update URI.
+	if ( plugin_basename( __FILE__ ) !== $plugin_file ) {
+		return $update;
+	}
+
+	$release = hd_slider_blocks_get_latest_release();
+
+	if ( empty( $release ) ) {
+		return $update;
+	}
+
+	// WordPress compares this version with the installed one, and only
+	// offers the update when it's newer.
+	return array(
+		'slug'    => dirname( $plugin_file ),
+		'version' => $release['version'],
+		'url'     => $release['url'],
+		'package' => $release['package'],
+	);
+}
+add_filter( 'update_plugins_github.com', 'hd_slider_blocks_check_for_update', 10, 3 );
+
+/**
+ * Get the latest GitHub release of the plugin.
+ *
+ * The answer is kept for six hours, so sites don't ask GitHub on every
+ * update check (GitHub limits how often a site can ask without signing in).
+ * Clicking "Check again" on the Dashboard > Updates screen skips the stored
+ * answer.
+ *
+ * @return array Version, release page URL and zip URL, or an empty array if
+ *               there's no usable release (or GitHub couldn't be reached).
+ */
+function hd_slider_blocks_get_latest_release(): array {
+	$cache_key = 'hd_slider_blocks_latest_release';
+	$release   = get_site_transient( $cache_key );
+
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only read to skip the cache.
+	if ( is_array( $release ) && ! isset( $_GET['force-check'] ) ) {
+		return $release;
+	}
+
+	$release  = array();
+	$response = wp_remote_get(
+		'https://api.github.com/repos/' . HD_SLIDER_BLOCKS_GITHUB_REPO . '/releases/latest',
+		array(
+			'timeout' => 10,
+			'headers' => array( 'Accept' => 'application/vnd.github+json' ),
+		)
+	);
+
+	if ( 200 === wp_remote_retrieve_response_code( $response ) ) {
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		// Find the plugin zip among the files attached to the release.
+		foreach ( $body['assets'] ?? array() as $asset ) {
+			if ( 'hd-slider-blocks.zip' === $asset['name'] ) {
+				$release = array(
+					// Tags are written as "v1.3.0", versions as "1.3.0".
+					'version' => ltrim( $body['tag_name'], 'v' ),
+					'url'     => $body['html_url'],
+					'package' => $asset['browser_download_url'],
+				);
+				break;
+			}
+		}
+	}
+
+	// If GitHub couldn't be reached, try again in an hour rather than six.
+	set_site_transient( $cache_key, $release, empty( $release ) ? HOUR_IN_SECONDS : 6 * HOUR_IN_SECONDS );
+
+	return $release;
+}
